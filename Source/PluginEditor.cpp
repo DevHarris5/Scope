@@ -5,7 +5,7 @@
 
 
 ScopeAudioProcessorEditor::ScopeAudioProcessorEditor(juce::AudioProcessor& p)
-    : AudioProcessorEditor(&p), visualiser(p)  // Pass processor to visualiser
+    : AudioProcessorEditor(&p), visualiser()  // Pass processor to visualiser
 {
     setSize(600, 400);
     addAndMakeVisible(visualiser);
