@@ -27,7 +27,5 @@ juce_modules/
 *.dylib
 *.dll
 *.app
-/Builds/VisualStudio2022
-/JuceLibraryCode
-/README.md
-/Source/PluginProcessor.cpp
+
+
