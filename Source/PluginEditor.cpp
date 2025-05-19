@@ -1,24 +1,32 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-ScopeAudioProcessorEditor::ScopeAudioProcessorEditor (ScopeAudioProcessor& p)
-    : AudioProcessorEditor (&p), audioProcessor (p)
+
+ScopeAudioProcessorEditor::ScopeAudioProcessorEditor(juce::AudioProcessor& p)
+    : AudioProcessorEditor(&p), visualiser(2) // stereo
 {
-    setSize (400, 300);
+    setSize(600, 400);
+
+    visualiser.setBufferSize(128);
+    visualiser.setSamplesPerBlock(16);
+    visualiser.setColours(juce::Colours::black, juce::Colours::lime);
+    visualiser.setRepaintRate(60);
+
+    addAndMakeVisible(visualiser);
 }
 
-ScopeAudioProcessorEditor::~ScopeAudioProcessorEditor()
-{
-}
+ScopeAudioProcessorEditor::~ScopeAudioProcessorEditor() {}
 
-void ScopeAudioProcessorEditor::paint (juce::Graphics& g)
+void ScopeAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    g.setColour (juce::Colours::white);
-    g.setFont (juce::FontOptions (15.0f));
-    g.drawFittedText ("Hello World!", getLocalBounds(), juce::Justification::centred, 1);
+    g.fillAll(juce::Colours::black);
 }
 
 void ScopeAudioProcessorEditor::resized()
 {
+    visualiser.setBounds(getLocalBounds());
+}
+
+void ScopeAudioProcessorEditor::pushBuffer(const juce::AudioBuffer<float>& buffer)
+{
+    visualiser.pushBuffer(buffer);
 }
