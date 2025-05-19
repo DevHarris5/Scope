@@ -1,16 +1,13 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "SmoothVisualiser.h"
+
+
 
 ScopeAudioProcessorEditor::ScopeAudioProcessorEditor(juce::AudioProcessor& p)
-    : AudioProcessorEditor(&p), visualiser(2) // stereo
+    : AudioProcessorEditor(&p) // stereo
 {
     setSize(600, 400);
-
-    visualiser.setBufferSize(128);
-    visualiser.setSamplesPerBlock(16);
-    visualiser.setColours(juce::Colours::black, juce::Colours::lime);
-    visualiser.setRepaintRate(60);
-
     addAndMakeVisible(visualiser);
 }
 
@@ -28,5 +25,14 @@ void ScopeAudioProcessorEditor::resized()
 
 void ScopeAudioProcessorEditor::pushBuffer(const juce::AudioBuffer<float>& buffer)
 {
-    visualiser.pushBuffer(buffer);
+    // Combine left and right channels into mono
+    juce::AudioBuffer<float> monoBuffer(1, buffer.getNumSamples());
+    monoBuffer.clear();
+
+    auto* monoData = monoBuffer.getWritePointer(0);
+
+    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+        monoBuffer.addFrom(0, 0, buffer, ch, 0, buffer.getNumSamples(), 0.5f); // average L+R
+
+    visualiser.pushBuffer(monoBuffer);
 }
