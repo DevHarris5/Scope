@@ -1,60 +1,64 @@
-#include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "SmoothVisualiser.h"
 
-
-
-ScopeAudioProcessorEditor::ScopeAudioProcessorEditor(juce::AudioProcessor& p)
-    : AudioProcessorEditor(&p), visualiser()  // Pass processor to visualiser
+ScopeAudioProcessorEditor::ScopeAudioProcessorEditor(ScopeAudioProcessor& p)
+    : AudioProcessorEditor(&p), audioProcessor(p)
 {
-    setSize(600, 400);
-    addAndMakeVisible(visualiser);
-
-    // Set up zoom slider
-    zoomSlider.setRange(0.1, 5.0, 0.1);  // Zoom level between 0.1x and 5x
-    zoomSlider.setValue(1.0);  // Start at normal zoom
-    zoomSlider.onValueChange = [this] {
-        // Update zoom level in the visualiser when the slider value changes
-        visualiser.setZoomLevel(zoomSlider.getValue());
+    setSize(800, 400);
+    speedSlider.setRange(10, 500, 1); // slower to faster
+    speedSlider.setValue(scrollSpeed);
+    speedSlider.setSliderStyle(juce::Slider::LinearHorizontal);
+    speedSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
+    speedSlider.onValueChange = [this]() {
+        scrollSpeed = (int)speedSlider.getValue();
         };
-    zoomSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    zoomSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20); // Value below slider
-    zoomSlider.setColour(juce::Slider::thumbColourId, juce::Colours::orange);  // Thumb color
-    zoomSlider.setColour(juce::Slider::trackColourId, juce::Colours::darkgrey);  // Track color
-    zoomSlider.setColour(juce::Slider::backgroundColourId, juce::Colours::lightgrey);  // Background color
-    addAndMakeVisible(zoomSlider);  // Make the slider visible
+    addAndMakeVisible(speedSlider);
+    scopeImage = juce::Image(juce::Image::RGB, getWidth(), getHeight(), true);
+    startTimerHz(60);
 }
 
 ScopeAudioProcessorEditor::~ScopeAudioProcessorEditor() {}
 
-void ScopeAudioProcessorEditor::paint(juce::Graphics& g)
-{
-    g.fillAll(juce::Colours::black);
-}
+void ScopeAudioProcessorEditor::paint(juce::Graphics& g) {
+    juce::Graphics imageGraphics(scopeImage);
+    imageGraphics.setColour(juce::Colours::black.withAlpha(0.1f));
+    imageGraphics.fillRect(scopeImage.getBounds());
 
-void ScopeAudioProcessorEditor::resized()
-{
-    visualiser.setBounds(getLocalBounds().removeFromTop(getHeight() - 50));  // Resize visualizer
-    zoomSlider.setBounds(10, getHeight() - 40, getWidth() - 20, 30);  // Position zoom slider
-    DBG("Slider bounds: " << zoomSlider.getBounds().toString()); // Debugging slider position
-}
+    imageGraphics.setColour(juce::Colours::cyan);
+    int midY = getHeight() / 2;
+    int width = getWidth();
+    int samplesPerPixel = scrollSpeed;
+    int totalSamples = samplesPerPixel * width;
+    int startIndex = (audioProcessor.writeIndex + ScopeAudioProcessor::bufferSize - totalSamples) % ScopeAudioProcessor::bufferSize;
 
-void ScopeAudioProcessorEditor::pushBuffer(const juce::AudioBuffer<float>& buffer)
-{
-    // Combine left and right channels into mono
-    juce::AudioBuffer<float> monoBuffer(1, buffer.getNumSamples());
-    monoBuffer.clear();
 
-    auto* monoData = monoBuffer.getWritePointer(0);
+    juce::Path waveformPath;
+    waveformPath.startNewSubPath(0, midY);
 
-    // Combine left and right channels into mono by averaging them
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-    {
-        monoBuffer.addFrom(0, 0, buffer, ch, 0, buffer.getNumSamples(), 0.5f);  // Average L+R channels
+    //int startIndex = (audioProcessor.writeIndex + ScopeAudioProcessor::bufferSize - width * samplesPerPixel) % ScopeAudioProcessor::bufferSize;
+
+    for (int x = 0; x < width; ++x) {
+        float sum = 0.0f;
+
+        for (int j = 0; j < samplesPerPixel; ++j) {
+            int index = (startIndex + x * samplesPerPixel + j) % ScopeAudioProcessor::bufferSize;
+            sum += audioProcessor.circularBuffer[index];
+        }
+
+        float avg = sum / samplesPerPixel;
+        float y = midY - avg * (midY - 10);
+        waveformPath.lineTo((float)x, y);
     }
 
-    // Push the mono buffer to the visualiser
-    visualiser.pushBuffer(monoBuffer);
+    imageGraphics.strokePath(waveformPath, juce::PathStrokeType(1.5f));
+    g.drawImageAt(scopeImage, 0, 0);
 }
 
 
+void ScopeAudioProcessorEditor::resized() 
+{
+    speedSlider.setBounds(10, getHeight() - 30, getWidth() - 20, 20);
+}
+
+void ScopeAudioProcessorEditor::timerCallback() {
+    repaint();
+}

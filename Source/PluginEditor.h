@@ -1,23 +1,26 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "SmoothVisualiser.h"
+#include "PluginProcessor.h"
 
-class ScopeAudioProcessorEditor : public juce::AudioProcessorEditor
+class ScopeAudioProcessorEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
-    ScopeAudioProcessorEditor(juce::AudioProcessor&);
+    ScopeAudioProcessorEditor(ScopeAudioProcessor&);
     ~ScopeAudioProcessorEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
 
-    void pushBuffer(const juce::AudioBuffer<float>& buffer);
-
 private:
-    //juce::AudioVisualiserComponent visualiser;
-    SmoothVisualiser visualiser;
-    juce::Slider zoomSlider;  // Zoom slider to control the zoom level
+    void timerCallback() override;
+
+    ScopeAudioProcessor& audioProcessor;
+    juce::Image scopeImage;
+
+    juce::Slider speedSlider;
+    int scrollSpeed = 50; // Default speed (samples per pixel)
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ScopeAudioProcessorEditor)
 };
