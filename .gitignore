@@ -30,3 +30,4 @@ juce_modules/
 /Builds/VisualStudio2022
 /JuceLibraryCode
 /README.md
+/Source/PluginProcessor.cpp
